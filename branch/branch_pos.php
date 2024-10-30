@@ -75,27 +75,45 @@
         <?php if (RequestSQL::getSession('online')) { ?>
             <div>
                 <?php
-                $data = RequestSQL::getAllProduct('branch-pos', $selectedCategory, null, $searchValue, null, 'Main Branch');
+                RequestSQL::getAllProductForCache(RequestSQL::getSession('account')['branchName']);
+                $data = RequestSQL::getAllProduct(
+                    'branch-pos',
+                    $selectedCategory,
+                    null,
+                    $searchValue,
+                    null,
+                    RequestSQL::getSession('account')['branchName']
+                );
                 $products = $data['result'];
                 $currentPage = $data['page'];
                 $totalPages = $data['total'];
                 BranchClass::loadAllPosProduct($products);
-                BranchClass::loadPaginator($currentPage, $totalPages, 'branch-pos-page');
                 ?>
+                <div class="d-flex justify-content-between">
+                    <?php
+                    BranchClass::loadPaginator($currentPage, $totalPages, 'branch-pos-page');
+                    ?>
+                    <a class="btn btn-success mb-3 rounded border-dark-green" target="_blank"
+                        href="modals/reciept.php">Print Last
+                        Transaction</a>
+                </div>
+
 
             </div>
         <?php } else { ?>
-            <div class="mb-3">
-                <label for="productName" class="form-label">Product Name</label>
-                <input type="text" class="form-control" id="productName" name="productName" placeholder="Enter product name"
-                    required>
-            </div>
-            <div class="mb-3">
-                <label for="productPrice" class="form-label">Product Price</label>
-                <input type="number" class="form-control" id="productPrice" name="productPrice"
-                    placeholder="Enter product price" required>
-            </div>
-            <button class='btn btn-secondary mb-3 rounded' type='submit'>Add Product</button>
+            <form action="backend/redirector.php" method="POST">
+                <input type="hidden" name="type" value="branch-add-cart">
+                <div class="mb-3">
+                    <label for="productBarcode" class="form-label">Product Barcode</label>
+                    <input type="text" class="form-control" id="productBarcode" name="productBarcode"
+                        placeholder="Enter product barcode (Can use scanner)" required>
+                </div>
+
+                <button class='btn btn-secondary mb-3 me-2 rounded' type='submit'>Add Product</button>
+                <a class="btn btn-success mb-3 rounded border-dark-green" target="_blank" href="modals/reciept.php">Print
+                    Last
+                    Transaction</a>
+            </form>
         <?php } ?>
     </div>
 </div>
@@ -145,6 +163,8 @@
                                     value="<?php echo htmlspecialchars($branchProd['product_id']); ?>">
                                 <input type="hidden" name="branch_id"
                                     value="<?php echo htmlspecialchars($branchProd['branch_id']); ?>">
+                                <input type="hidden" name="productBarcode"
+                                    value="<?php echo htmlspecialchars($branchProd['product_barcode']); ?>">
                                 <input type="hidden" name="product_name"
                                     value="<?php echo htmlspecialchars($branchProd['product_name']); ?>">
                                 <input type="hidden" name="product_price"
@@ -237,6 +257,7 @@
                 <input type="hidden" id="total-input" name="total" value="0">
                 <input type="hidden" id="received-input" name="received" value="0">
                 <input type="hidden" id="change-input" name="change" value="0">
+
                 <button class="btn flex-fill rounded border-1 custom-receipt-btn p-2 fs-4" type="submit">Save
                     Order</button>
             </form>

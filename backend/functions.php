@@ -417,6 +417,7 @@ class BranchClass
                 echo "<input type='hidden' name='type' value='branch-add-cart'>";
                 echo "<input type='hidden' name='product_id' value='" . htmlspecialchars($product['id']) . "'>";
                 echo "<input type='hidden' name='branch_id' value='" . htmlspecialchars($product['branchId']) . "'>";
+                echo "<input type='hidden' name='product_barcode' value='" . htmlspecialchars($product['barCode']) . "'>";
                 echo "<input type='hidden' name='product_name' value='" . htmlspecialchars($product['productName']) . "'>";
                 echo "<input type='hidden' name='product_price' value='" . htmlspecialchars($product['productPrice']) . "'>";
                 echo "<input type='hidden' name='product_stock' value='" . htmlspecialchars($product['productStock']) . "'>";
@@ -581,7 +582,6 @@ class BranchClass
                 $isArchived = $product['productPrice'] ? 'Archived' : 'Unarchived';
 
                 $modalId = 'details-modal-' . $product['id'];
-                // RequestSQL::debugAlert(json_encode($_SESSION['account']));
                 echo
                     "<tr>
                         <td class='align-content-center ps-4'>

@@ -3,7 +3,7 @@ session_start();
 require_once "backend/request.php";
 require_once "backend/functions.php";
 
-$_SESSION['online'] = RequestSQL::isOffline();
+RequestSQL::isOnline();
 if (!isset($_SESSION['account'])) {
     header('Location: index.php');
     exit;
@@ -24,7 +24,15 @@ if (isset($_SESSION['success-message'])) {
 <!-- Main Body -------------------------------------------------------------------------------------------------------------->
 
 <section class="container-fluid custom-main-wrapper col-md-12 overflow-y-scroll">
+    <style>
+        .border-dark-green {
+            background: #56AB91;
+        }
 
+        .border-dark-green:hover {
+            background: #369B71;
+        }
+    </style>
     <!-- Main Layout -->
     <div class="container">
         <div class="d-flex my-3">

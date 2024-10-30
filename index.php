@@ -3,11 +3,23 @@ session_start();
 require_once "backend/request.php";
 require_once "backend/functions.php";
 
+$_SESSION['cache_account'] = [];
+if (file_exists("json/cache_account.json")) {
+    $session_data = json_decode(file_get_contents("json/cache_account.json"), true);
+    $_SESSION['cache_account'] = $session_data;
+}
+$_SESSION['online'] = RequestSQL::isOffline();
+
+
 $_SESSION['account'] = null;
 unset($_SESSION['account']);
 
+$_SESSION['branch-cart-product'] = [];
+unset($_SESSION['branch-cart-product']);
+
 include "client/client_header.php";
 include "client/client_navigation.php";
+
 
 require_once("modals/modals.php");
 if (isset($_SESSION['success-message'])) {
@@ -63,6 +75,8 @@ if (isset($_SESSION['success-message'])) {
             $branches = RequestSQL::getAllBranches();
             if ($branches->num_rows != 0) {
                 foreach ($branches as $branch) {
+                    if ($branch['branch_name'] === 'All Branch')
+                        continue;
                     ?>
             <div class="col-sm-6">
                 <div class="card shadow bg-body-tertiary rounded border-0 custom-card-branch mb-3"
@@ -127,7 +141,7 @@ if (isset($_SESSION['success-message'])) {
                     $isActive = $selectedCategory === $category['category_name'] ? 'active' : '';
                     echo "
                     <li class='nav-item'>
-                        <a class='nav-link $isActive' href='index.php?category={$category['category_name']}'>{$category['category_name']}</a>
+                        <a class='nav-link $isActive' href='index.php?category={$category['category_name']}#categories'>{$category['category_name']}</a>
                     </li>
                     ";
                 }

@@ -8,6 +8,13 @@ require_once('./session.php');
 class BranchHandler
 {
 
+    static function checkOnlineStatus()
+    {
+        $isOnline = !(@fsockopen('www.google.com', 80) == null);
+        $_SESSION['online'] = $isOnline;
+        header("Location: ../branch.php");
+        exit;
+    }
     static function setBranchPosPage()
     {
         $page = $_POST["page"];
@@ -62,8 +69,68 @@ class BranchHandler
             $branchProducts[] = [
                 'product_id' => $_POST['product_id'],
                 'branch_id' => $_POST['branch_id'],
+                'branch_name' => $_SESSION['account']['assignedBranch'],
+                'product_barcode' => $_POST['product_barcode'],
                 'product_name' => $_POST['product_name'],
                 'product_price' => $_POST['product_price'],
+                'product_stock' => $productStock,
+                'quantity' => 1
+            ];
+        }
+
+        $session->set('branch-cart-product', $branchProducts);
+        header("Location: ../branch.php");
+        exit;
+    }
+
+    static function branchAddProductOffline($branch_target)
+    {
+        $session = new Session();
+        $branchProducts = $session->getOrSet('branch-cart-product', []);
+        $productExists = false;
+
+        $productBarcode = $_POST['productBarcode'];
+        $products = $session->get("product-cache-{$branch_target}");
+
+        $product_target = [];
+        foreach ($products as $prod) {
+            if ($prod['barCode'] === $productBarcode) {
+                $product_target = $prod;
+                break;
+            }
+        }
+        if (empty($product_target)) {
+            $session->set('error-message', "You are offline. Product does not found in this branch.");
+            header("Location: ../branch.php");
+            exit;
+        }
+
+        $productStock = $product_target['productStock'];
+        foreach ($branchProducts as $key => &$product) {
+            if ($product['product_id'] === $product_target['id']) {
+                if (isset($_POST['action']) && $_POST['action'] === 'increment') {
+                    if ($product['quantity'] < $productStock)
+                        $product['quantity'] += 1;
+
+                } elseif (isset($_POST['action']) && $_POST['action'] === 'decrement') {
+                    if ($product['quantity'] > 1)
+                        $product['quantity'] -= 1;
+                    else
+                        unset($branchProducts[$key]);
+                }
+                $productExists = true;
+                break;
+            }
+        }
+
+        if (!$productExists) {
+            $branchProducts[] = [
+                'product_id' => $product_target['id'],
+                'branch_id' => $product_target['branchId'],
+                'branch_name' => $branch_target,
+                'product_barcode' => $product_target['barCode'],
+                'product_name' => $product_target['productName'],
+                'product_price' => $product_target['productPrice'],
                 'product_stock' => $productStock,
                 'quantity' => 1
             ];
@@ -84,38 +151,154 @@ class BranchHandler
         $change = $_POST['change'];
 
         $branchProducts = $session->get('branch-cart-product');
+
         if ($branchProducts) {
             $productIDList = [];
             $branch_id = '1';
+
             foreach ($branchProducts as $product) {
                 $productId = $product['product_id'];
                 $quantity = $product['quantity'];
                 $branch_id = $product['branch_id'];
-
-                $query = "INSERT INTO productOrdered (productId, numberProduct) VALUES (?, ?)";
-                $database->prepexec($query, $productId, $quantity);
-                $productOrderedId = $database->getLastInsertedId();
-                $productIDList[] = $productOrderedId;
-
-                $updateQuery = "UPDATE products SET productStock = productStock - ? WHERE id = ?";
-                $database->prepexec($updateQuery, $quantity, $productId);
+                $productIDList[] = [
+                    'product_id' => $productId,
+                    'branch_name' => $product['branch_name'],
+                    'product_name' => $product['product_name'],
+                    'product_price' => $product['product_price'],
+                    'quantity' => $quantity
+                ];
             }
 
-            $productIDListJson = json_encode(['id' => $productIDList]);
-            $query = "INSERT INTO transactions (productOrderedIds, branchId, staffId, totalPrice, cashPrice, changePrice) 
-                VALUES (?, ?, ?, ?, ?, ?)";
+            $transactionData = [
+                'productOrderedIds' => $productIDList,
+                'branchId' => $branch_id,
+                'branchName' => $session->get('account')['branchName'],
+                'staffId' => $session->get('account')['id'],
+                'staffUsername' => $session->get('account')['userName'],
+                'totalPrice' => $total,
+                'cashPrice' => $received,
+                'changePrice' => $change,
+            ];
 
-            $database->prepexec($query, $productIDListJson, $branch_id, 1, $total, $received, $change);
-            $session->set('success-message', "Transaction saved successfully!");
+            if ($_SESSION['online']) {
+                $productIDList = [];
+                foreach ($branchProducts as $product) {
+                    $productId = $product['product_id'];
+                    $quantity = $product['quantity'];
+
+                    $query = "INSERT INTO productOrdered (productId, numberProduct) VALUES (?, ?)";
+                    $database->prepexec($query, $productId, $quantity);
+                    $productOrderedId = $database->getLastInsertedId();
+                    $productIDList[] = $productOrderedId;
+
+                    $updateQuery = "UPDATE products SET productStock = productStock - ? WHERE id = ?";
+                    $database->prepexec($updateQuery, $quantity, $productId);
+                }
+
+                $productIDListJson = json_encode(['id' => $productIDList]);
+
+                $query = "INSERT INTO transactions (productOrderedIds, branchId, staffId, totalPrice, cashPrice, changePrice) 
+                VALUES (?, ?, ?, ?, ?, ?)";
+                $database->prepexec($query, $productIDListJson, $branch_id, $session->get('account')['id'], $total, $received, $change);
+                $session->set('success-message', "Transaction saved successfully!");
+            } else {
+                $offlineTransactionsFile = '../json/offline_transactions.json';
+                $offlineTransactions = file_exists($offlineTransactionsFile)
+                    ? json_decode(file_get_contents($offlineTransactionsFile), true)
+                    : [];
+
+                $branchName = $transactionData['branchName'];
+                if (!isset($offlineTransactions[$branchName])) {
+                    $offlineTransactions[$branchName] = [];
+                }
+                $offlineTransactions[$branchName][] = $transactionData;
+                file_put_contents($offlineTransactionsFile, json_encode($offlineTransactions, JSON_PRETTY_PRINT));
+                $session->set('success-message', "Transaction saved offline for Branch $branchName. Upload when online.");
+            }
         } else {
             $session->set('error-message', "Transaction error!");
         }
-
+        $session->set('last_transaction', $transactionData);
         $session->set('branch-cart-product', []);
         $session->set('branch-pos-page', 1);
         header("Location: ../branch.php");
         exit;
     }
+
+
+    static function uploadTransaction()
+    {
+        $database = new MySQLDatabase();
+        $session = new Session();
+        $offlineTransactionsFile = '../json/offline_transactions.json';
+
+        if (file_exists($offlineTransactionsFile)) {
+            $offlineTransactions = json_decode(file_get_contents($offlineTransactionsFile), true);
+
+            $found = false;
+            if ($offlineTransactions) {
+                $branchName = $session->get('account')['branchName'];
+                foreach ($offlineTransactions as $branch_name => $transactions) {
+                    if (
+                        $branchName !== "All Branch" &&
+                        $branchName !== $branch_name
+                    )
+                        continue;
+
+                    foreach ($transactions as $transaction) {
+                        $found = true;
+                        $productIDList = [];
+                        foreach ($transaction['productOrderedIds'] as $product) {
+                            $productId = $product['product_id'];
+                            $quantity = $product['quantity'];
+
+                            $query = "INSERT INTO productOrdered (productId, numberProduct) VALUES (?, ?)";
+                            $database->prepexec($query, $productId, $quantity);
+                            $productOrderedId = $database->getLastInsertedId();
+                            $productIDList[] = $productOrderedId;
+
+                            $updateQuery = "UPDATE products SET productStock = productStock - ? WHERE id = ?";
+                            $database->prepexec($updateQuery, $quantity, $productId);
+                        }
+                        $productIDListJson = json_encode(['id' => $productIDList]);
+
+                        $query = "
+                            INSERT INTO transactions
+                            (productOrderedIds, branchId, staffId, totalPrice, cashPrice, changePrice) 
+                            VALUES (?, ?, ?, ?, ?, ?)";
+                        $database->prepexec(
+                            $query,
+                            $productIDListJson,
+                            $transaction['branchId'],
+                            $transaction['staffId'],
+                            $transaction['totalPrice'],
+                            $transaction['cashPrice'],
+                            $transaction['changePrice']
+                        );
+                    }
+
+                }
+                if ($branchName === "All Branch") {
+                    file_put_contents($offlineTransactionsFile, json_encode([]));
+                } else {
+                    $offlineTransactions[$branchName] = [];
+                    file_put_contents($offlineTransactionsFile, json_encode($offlineTransactions));
+                }
+
+                if ($found)
+                    $session->set('success-message', "Offline transactions uploaded successfully.");
+                else
+                    $session->set('error-message', "No offline transactions to upload.");
+            } else {
+                $session->set('error-message', "No offline transactions to upload.");
+            }
+        } else {
+            $session->set('error-message', "Offline transactions file not found.");
+        }
+        header("Location: ../{$_POST['direct']}");
+        exit;
+    }
+
 
     static function branchAddStock()
     {
@@ -160,7 +343,6 @@ class BranchHandler
 
 class AdminHandler
 {
-
     static function adminAddProduct()
     {
         $database = new MySQLDatabase();
@@ -306,13 +488,47 @@ class AdminHandler
     }
 }
 
+
 function login()
 {
-    $database = new MySQLDatabase();
     $session = new Session();
     $email = $_POST['email'];
     $password = $_POST['pass'];
 
+    $cache = $session->get('cache_account');
+    if (@fsockopen('www.google.com', 80) == null) {
+        if (is_array($cache) && isset($cache[$email])) {
+            $user = $cache[$email];
+            if (password_verify($password, $user['password'])) {
+                $userData = [
+                    'id' => $user['id'],
+                    'userName' => $user['userName'],
+                    'firstName' => $user['firstName'],
+                    'lastName' => $user['lastName'],
+                    'email' => $user['email'],
+                    'isAdmin' => $user['isAdmin'],
+                    'assignedBranch' => $user['assignedBranch'],
+                    'branchName' => $user['branchName'],
+                    'userStatus' => $user['userStatus']
+                ];
+
+                $session->set('account', $userData);
+                $session->set('success-message', 'Login successful!');
+
+                if ($userData['isAdmin'] == '0')
+                    header("Location: ../branch.php");
+                else
+                    header("Location: ../admin.php");
+                exit;
+            }
+        } else {
+            $session->set('error-message', "You are offline, and no cached login record was found for this account.");
+            header("Location: ../index.php");
+            exit;
+        }
+    }
+
+    $database = new MySQLDatabase();
     if (empty($email) || empty($password)) {
         $session->set('error-message', 'Email or password cannot be empty.');
         header("Location: login.php");
@@ -320,8 +536,8 @@ function login()
     }
 
     $query = "
-        SELECT id, userName, firstName, lastName, email, password, isAdmin, assignedBranch, userStatus 
-        FROM users WHERE email = ? LIMIT 1";
+        SELECT users.id AS id, userName, firstName, lastName, email, password, isAdmin, assignedBranch, userStatus, b.branchName AS branchName
+        FROM users JOIN branch b ON b.id = users.assignedBranch WHERE email = ? LIMIT 1";
 
     $result = $database->prepexec($query, $email);
     if ($result->num_rows == 0) {
@@ -351,17 +567,33 @@ function login()
         'email' => $user['email'],
         'isAdmin' => $user['isAdmin'],
         'assignedBranch' => $user['assignedBranch'],
+        'branchName' => $user['branchName'],
         'userStatus' => $user['userStatus']
     ];
 
     $session->set('account', $userData);
     $session->set('success-message', 'Login successful!');
 
+    $hashedPassword = password_hash($user['password'], PASSWORD_DEFAULT);
+    $cache[$email] = [
+        'id' => $user['id'],
+        'userName' => $user['userName'],
+        'firstName' => $user['firstName'],
+        'lastName' => $user['lastName'],
+        'email' => $user['email'],
+        'password' => $hashedPassword,
+        'isAdmin' => $user['isAdmin'],
+        'assignedBranch' => $user['assignedBranch'],
+        'branchName' => $user['branchName'],
+        'userStatus' => $user['userStatus']
+    ];
+    file_put_contents("../json/cache_account.json", json_encode($cache, JSON_PRETTY_PRINT));
+
     if ($userData['isAdmin'] == '0')
         header("Location: ../branch.php");
     else
         header("Location: ../admin.php");
-    exit();
+    exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -370,8 +602,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($type == 'client-login')
         login();
 
+    if ($type == "upload-transaction")
+        BranchHandler::uploadTransaction();
     if ($type == 'branch-stock-item')
         BranchHandler::branchAddStock();
+    if ($type == "check-online-status")
+        BranchHandler::checkOnlineStatus();
     if ($type == 'branch-unstock-item')
         BranchHandler::branchRemoveStock();
     if ($type == "branch-pos-page")
@@ -380,8 +616,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         BranchHandler::setBranchTransactionPage();
     if ($type == "branch-stock-page")
         BranchHandler::setBranchStockPage();
-    if ($type == "branch-add-cart")
-        BranchHandler::branchAddToCart();
+    if ($type == "branch-add-cart") {
+        if ($_SESSION['online'])
+            BranchHandler::branchAddToCart();
+        else
+            BranchHandler::branchAddProductOffline($_SESSION['account']['branchName']);
+    }
     if ($type == "branch-add-transaction")
         BranchHandler::branchAddTransaction();
 

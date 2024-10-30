@@ -2,18 +2,19 @@
 
     <!-- Search / Category Navigation -->
     <div class="card shadow p-0 bg-body-tertiary rounded border-0 mb-3">
-        <form action="" method="post">
-            <div class="input-group input-group border-0 justify-content-between p-2 pb-0">
-                <p class=" fw-bold border-start border-3 border-success px-4 mb-3 me-5 m-1 align-content-center">
-                    Transactions Report
-                </p>
-
-                <button class="btn btn-secondary m-1 mb-3 rounded" type="button" data-bs-toggle="modal"
-                    data-bs-target="#uploadTransaction">
-                    Upload Transaction
+        <div class="input-group input-group border-0 justify-content-between p-2 pb-0">
+            <p class=" fw-bold border-start border-3 border-success px-4 mb-3 me-5 m-1 align-content-center">
+                Transactions Report
+            </p>
+            <form action="backend/redirector.php" method="post">
+                <input type="hidden" name="type" value="upload-transaction">
+                <input type="hidden" name="direct" value="admin.php?page=transaction-report">
+                <button class="btn btn-secondary m-1 mb-3 rounded" type="submit">
+                    Upload Offline Transaction
                 </button>
-            </div>
-        </form>
+            </form>
+
+        </div>
     </div>
 
     <!-- Product Grid -->

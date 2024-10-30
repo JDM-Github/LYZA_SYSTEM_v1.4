@@ -77,8 +77,14 @@
 
         <div>
             <?php
-            // RequestSQL::debugAlert(json_encode(RequestSQL::getSession('account')));
-            $data = RequestSQL::getAllProduct('branch-stock', $selectedCategory, $selectedStatus, null, $selectedArchived, 'Main Branch');
+            $data = RequestSQL::getAllProduct(
+                'branch-stock',
+                $selectedCategory,
+                $selectedStatus,
+                null,
+                $selectedArchived,
+                RequestSQL::getSession('account')['branchName']
+            );
             $result = $data['result'];
             $currentPage = $data['page'];
             $totalPages = $data['total'];

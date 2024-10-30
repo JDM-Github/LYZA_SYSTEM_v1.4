@@ -28,7 +28,7 @@
         <!----- Login Form Body ----->
         <div class="offcanvas-body">
             <?php
-            include "includes/login.inc.php";
+            include "client/client_login.php";
             ?>
         </div>
     </div>

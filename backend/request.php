@@ -8,7 +8,23 @@ class RequestSQL
 {
     static function isOffline()
     {
-        return @fsockopen('www.google.com', 80);
+        return !(@fsockopen('www.google.com', 80) == null);
+    }
+
+    static function isOnline()
+    {
+        if (isset($_SESSION['online'], $_SESSION['last_online_check'])) {
+            $lastCheck = $_SESSION['last_online_check'];
+
+            if ((time() - $lastCheck) < ONLINE_CHECK_INTERVAL) {
+                return $_SESSION['online'];
+            }
+        }
+
+        $isOnline = !(@fsockopen('www.google.com', 80) == null);
+        $_SESSION['online'] = $isOnline;
+        $_SESSION['last_online_check'] = time();
+        return $isOnline;
     }
 
     // static function checkOnline()
@@ -229,7 +245,53 @@ class RequestSQL
         return $database->query($query);
     }
 
+    static function getAllProductForCache($branch_target)
+    {
+        $session = new Session();
+        $database = new MySQLDatabase();
 
+        $query = "SELECT p.*, b.branchName FROM products p 
+            JOIN branch b ON p.branchId = b.id WHERE 1=1";
+
+        if ($branch_target) {
+            $branch_target = $database->escape($branch_target);
+            $query .= " AND b.branchName = '$branch_target'";
+        }
+
+        $result = $database->query($query);
+        $productCache = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $productCache[] = [
+                'id' => $row['id'],
+                'branchId' => $row['branchId'],
+                'barCode' => $row['barCode'],
+                'productName' => $row['productName'],
+                'productPrice' => $row['productPrice'],
+                'productStock' => $row['productStock'],
+                'productCategory' => $row['productCategory'],
+                'productImage' => $row['productImage'],
+                'productDescription' => $row['productDescription'],
+                'isArchived' => $row['isArchived'],
+                'createdAt' => $row['createdAt'],
+                'branchName' => $row['branchName'],
+            ];
+        }
+        if (!empty($branch_target)) {
+            $session->set("product-cache-{$branch_target}", $productCache);
+        }
+    }
+
+    static function getProductsFromCache($branch_target)
+    {
+        $session = new Session();
+        $cachedProducts = $session->get("product-cache-{$branch_target}");
+        if ($cachedProducts) {
+            return $cachedProducts;
+        } else {
+            return [];
+        }
+    }
 
     static function getAllProduct(
         $branch = 'branch-pos',

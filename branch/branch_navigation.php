@@ -21,9 +21,18 @@
             <h2 class=" fw-bold fs-4">Lyza Drugmart</h2>
 
             <!----- Log Out ----->
-            <a class="btn btn-secondary p-2" type="button" href="index.php">
-                <small><i class="bi bi-box-arrow-right"></i>&nbsp;LOG OUT </small>
-            </a>
+            <div>
+                <form method="POST" action="backend/redirector.php">
+                    <input type="hidden" name="type" value="check-online-status">
+                    <button id="printChartButton" class="btn btn-success ms-3 p-2 border-dark-green" type="submit">Check
+                        Online
+                        Status</button>
+                    <a class="btn btn-secondary p-2" type="button" href="index.php">
+                        <small><i class="bi bi-box-arrow-right"></i>&nbsp;LOG OUT </small>
+                    </a>
+                </form>
+
+            </div>
         </div>
     </nav>
 </header>

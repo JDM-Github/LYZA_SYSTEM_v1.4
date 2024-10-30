@@ -2,6 +2,11 @@
 session_start();
 require_once "backend/request.php";
 require_once "backend/functions.php";
+$_SESSION['online'] = RequestSQL::isOffline();
+if (!$_SESSION['online']) {
+    header('Location: index.php');
+    exit;
+}
 
 if (!isset($_SESSION['account']) || $_SESSION['account']['isAdmin'] == '0') {
     header('Location: index.php');
