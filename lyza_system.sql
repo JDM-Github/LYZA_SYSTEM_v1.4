@@ -13,6 +13,7 @@ CREATE TABLE branch (
     city VARCHAR(100) DEFAULT "", 
     province VARCHAR(100) DEFAULT "", 
     operatingHours VARCHAR(50) DEFAULT "",
+    pb VARCHAR(100) DEFAULT "",
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,11 +86,11 @@ CREATE TABLE stockHistory (
     FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
 );
 
-INSERT INTO branch (branchName, branchImg, coordinates, addressLine, city, province, operatingHours) VALUES
-('All Branch', 'branch1-view.jpg', 'COORDS1', 'Blk. 12/38 Mountainview Homes, Brgy. San Miguel', 'Sto. Tomas', 'Batangas', '8:00 AM - 8:00 PM'),
-('Main Branch', 'branch1-view.jpg', 'COORDS1', 'Blk. 12/38 Mountainview Homes, Brgy. San Miguel', 'Sto. Tomas', 'Batangas', '8:00 AM - 8:00 PM'),
-('Downtown Branch', 'branch2-view.jpg', 'COORDS2', '123 Downtown St., Brgy. Central', 'Sto. Tomas', 'Batangas', '9:00 AM - 7:00 PM'),
-('Uptown Branch', 'branch3-view.jpg', 'COORDS3', '456 Uptown Ave., Brgy. Northern', 'Sto. Tomas', 'Batangas', '10:00 AM - 6:00 PM');
+INSERT INTO branch (branchName, branchImg, coordinates, addressLine, city, province, operatingHours, pb) VALUES
+('All Branch', 'branch1-view.jpg', 'COORDS1', 'Blk. 12/38 Mountainview Homes, Brgy. San Miguel', 'Sto. Tomas', 'Batangas', '8:00 AM - 8:00 PM', ""),
+('Main Branch', 'branch1-view.jpg', 'COORDS1', 'Blk. 12/38 Mountainview Homes, Brgy. San Miguel', 'Sto. Tomas', 'Batangas', '8:00 AM - 8:00 PM', ""),
+('Downtown Branch', 'branch2-view.jpg', 'COORDS2', '123 Downtown St., Brgy. Central', 'Sto. Tomas', 'Batangas', '9:00 AM - 7:00 PM', ""),
+('Uptown Branch', 'branch3-view.jpg', 'COORDS3', '456 Uptown Ave., Brgy. Northern', 'Sto. Tomas', 'Batangas', '10:00 AM - 6:00 PM', "");
 
 
 INSERT INTO users (firstName, lastName, userName, email, password, isAdmin, assignedBranch, userStatus) VALUES

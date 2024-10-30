@@ -373,7 +373,7 @@ class BranchClass
     
                         <!-- Google Map Embed -->
                         <iframe
-                            src='https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3878.9255162384614!2d121.17742671544203!3d14.067197190567972!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd7bf10f60d537%3A0xf00dfbb632efee!2s14.067197%2C%20121.179615!5e0!3m2!1sen!2sph!4v1697721885670!5m2!1sen!2sph'
+                            src='{$branch['pb']}'
                             width='100%' height='450' style='border:0;' allowfullscreen='' loading='lazy'
                             referrerpolicy='no-referrer-when-downgrade'>
                         </iframe>

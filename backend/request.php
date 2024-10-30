@@ -27,16 +27,6 @@ class RequestSQL
         return $isOnline;
     }
 
-    // static function checkOnline()
-    // {
-
-
-    //     if (isOffline("google.com")) {
-    //         return false;
-    //     } else {
-    //         return true;
-    //     }
-    // }
     static function debugAlert($data)
     {
         echo "<script>alert('" . $data . "')</script>";
@@ -61,7 +51,7 @@ class RequestSQL
     static function getAllBranches()
     {
         $database = new MySQLDatabase();
-        return $database->query("SELECT DISTINCT branchName AS branch_name, id, branchImg, coordinates, addressLine, city, province, operatingHours FROM branch");
+        return $database->query("SELECT DISTINCT branchName AS branch_name, id, branchImg, coordinates, addressLine, city, province, operatingHours, pb FROM branch");
     }
 
     static function getAllStaff($isAdmin = false, $assigned = null)
